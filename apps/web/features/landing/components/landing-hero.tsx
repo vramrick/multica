@@ -1,6 +1,5 @@
 "use client";
 
-import { useCallback, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useAuthStore } from "@multica/core/auth";
@@ -65,8 +64,6 @@ export function LandingHero() {
                 {t.hero.downloadDesktop}
               </Link>
             </div>
-
-            <InstallCommand />
           </div>
 
           <div className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
@@ -102,71 +99,6 @@ export function LandingHero() {
           </div>
         </section>
       </main>
-    </div>
-  );
-}
-
-const INSTALL_COMMAND =
-  "curl -fsSL https://raw.githubusercontent.com/multica-ai/multica/main/scripts/install.sh | bash";
-
-function InstallCommand() {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(INSTALL_COMMAND);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // ignore
-    }
-  }, []);
-
-  return (
-    <div className="mx-auto mt-6 flex w-full max-w-full items-stretch gap-1 rounded-lg border border-white/10 bg-white/5 p-1 backdrop-blur-sm sm:w-auto sm:max-w-fit">
-      <code className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2 text-left font-mono text-[13px] text-white/70">
-        <span className="shrink-0 text-white/40 select-none" aria-hidden="true">
-          $
-        </span>
-        <span className="min-w-0 break-all select-all sm:break-normal">
-          {INSTALL_COMMAND}
-        </span>
-      </code>
-      <button
-        type="button"
-        onClick={handleCopy}
-        aria-label={copied ? "Copied" : "Copy install command"}
-        className="flex shrink-0 items-center justify-center rounded-md px-2.5 text-white/40 transition-colors hover:bg-white/[0.08] hover:text-white/90"
-      >
-        {copied ? (
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="size-3.5 text-green-400"
-            aria-hidden="true"
-          >
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
-        ) : (
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="size-3.5"
-            aria-hidden="true"
-          >
-            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-          </svg>
-        )}
-      </button>
     </div>
   );
 }
