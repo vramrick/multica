@@ -911,3 +911,59 @@ func TestCodexProtocolDetectionLegacyBlocksRaw(t *testing.T) {
 		t.Fatal("raw notification should be ignored in legacy mode")
 	}
 }
+
+func TestStderrTailForwardsAndCapturesTail(t *testing.T) {
+	t.Parallel()
+
+	var sink strings.Builder
+	s := newStderrTail(&sink, 16)
+
+	if _, err := s.Write([]byte("first line\n")); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	if _, err := s.Write([]byte("error: unexpected argument '-m' found\n")); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	// Inner writer sees every byte verbatim.
+	want := "first line\nerror: unexpected argument '-m' found\n"
+	if sink.String() != want {
+		t.Errorf("inner sink: got %q, want %q", sink.String(), want)
+	}
+
+	// Tail is bounded by max; earlier bytes get dropped.
+	tail := s.Tail()
+	if len(tail) > 16 {
+		t.Errorf("tail exceeds bound: got %d bytes (%q)", len(tail), tail)
+	}
+	if tail == "" {
+		t.Fatal("expected non-empty tail")
+	}
+	// Tail must be a suffix of what was written (whitespace-trimmed).
+	if !strings.HasSuffix(strings.TrimSpace(want), tail) {
+		t.Errorf("tail %q is not a suffix of %q", tail, want)
+	}
+}
+
+func TestStderrTailEmptyWhenNothingWritten(t *testing.T) {
+	t.Parallel()
+
+	var sink strings.Builder
+	s := newStderrTail(&sink, 16)
+	if tail := s.Tail(); tail != "" {
+		t.Errorf("expected empty tail, got %q", tail)
+	}
+}
+
+func TestWithCodexStderrAppendsHint(t *testing.T) {
+	t.Parallel()
+
+	if got := withCodexStderr("codex initialize failed: process exited", ""); got != "codex initialize failed: process exited" {
+		t.Errorf("empty tail should not modify msg, got %q", got)
+	}
+	msg := withCodexStderr("codex initialize failed: process exited", "unexpected argument '-m' found")
+	want := "codex initialize failed: process exited; codex stderr: unexpected argument '-m' found"
+	if msg != want {
+		t.Errorf("got %q, want %q", msg, want)
+	}
+}
