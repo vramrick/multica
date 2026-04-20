@@ -2,7 +2,10 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -13,7 +16,62 @@ const (
 	// 15s lines up with the daemon heartbeat cadence so it's easy to
 	// correlate with traffic patterns in the prod logs.
 	dbStatsInterval = 15 * time.Second
+
+	// defaultMaxConns / defaultMinConns are the per-pod pgxpool sizing
+	// defaults. They replace pgx's built-in default of max(4, NumCPU),
+	// which is far too small for our daemon-poll traffic pattern (~3800
+	// acquires/s observed in prod) and was the root cause of the 3s+
+	// /tasks/claim tail latency.
+	//
+	// The numbers follow the conventional "small pool, lots of waiters"
+	// guidance for Postgres (HikariCP / PG community formula
+	// `(core_count * 2) + effective_spindle_count`): 25 leaves headroom
+	// for bursts and the occasional long-running query while staying well
+	// below typical managed-Postgres `max_connections` ceilings when
+	// multiplied across pods. MinConns=5 keeps a warm baseline so cold
+	// pods don't pay handshake cost on first traffic.
+	//
+	// Both values are overridable via DATABASE_MAX_CONNS / DATABASE_MIN_CONNS.
+	defaultMaxConns int32 = 25
+	defaultMinConns int32 = 5
 )
+
+// newDBPool builds a pgxpool with sane production defaults and env overrides.
+//
+// pgxpool.New(ctx, url) — used previously — silently picks MaxConns =
+// max(4, NumCPU). On our prod pods (small CPU request) that resolved to 4,
+// which got fully saturated by the daemon claim/heartbeat traffic and showed
+// up as ~900ms acquire waits on every query.
+func newDBPool(ctx context.Context, dbURL string) (*pgxpool.Pool, error) {
+	cfg, err := pgxpool.ParseConfig(dbURL)
+	if err != nil {
+		return nil, fmt.Errorf("parse database url: %w", err)
+	}
+
+	cfg.MaxConns = envInt32("DATABASE_MAX_CONNS", defaultMaxConns)
+	cfg.MinConns = envInt32("DATABASE_MIN_CONNS", defaultMinConns)
+	if cfg.MinConns > cfg.MaxConns {
+		cfg.MinConns = cfg.MaxConns
+	}
+
+	return pgxpool.NewWithConfig(ctx, cfg)
+}
+
+// envInt32 reads an int32 from the named env var. Empty / invalid values fall
+// back to def and emit a warn so misconfiguration is visible in startup logs.
+func envInt32(name string, def int32) int32 {
+	raw := os.Getenv(name)
+	if raw == "" {
+		return def
+	}
+	v, err := strconv.ParseInt(raw, 10, 32)
+	if err != nil || v <= 0 {
+		slog.Warn("invalid env var, using default",
+			"name", name, "value", raw, "default", def, "error", err)
+		return def
+	}
+	return int32(v)
+}
 
 // logPoolConfig prints the effective pgxpool configuration once at startup.
 // Surfacing this is critical because pgxpool defaults are surprisingly small
@@ -41,10 +99,10 @@ func runDBStatsLogger(ctx context.Context, pool *pgxpool.Pool) {
 	defer ticker.Stop()
 
 	var (
-		lastEmpty       int64
-		lastAcquire     int64
-		lastAcquireDur  time.Duration
-		lastCanceled    int64
+		lastEmpty      int64
+		lastAcquire    int64
+		lastAcquireDur time.Duration
+		lastCanceled   int64
 	)
 	for {
 		select {
