@@ -850,11 +850,6 @@ func (h *Handler) emitIssueExecutedOnFirstCompletion(r *http.Request, task *db.A
 		}
 		return
 	}
-	count, countErr := h.Queries.CountExecutedIssuesInWorkspace(r.Context(), marked.WorkspaceID)
-	if countErr != nil {
-		slog.Warn("analytics: count executed issues failed", "workspace_id", uuidToString(marked.WorkspaceID), "error", countErr)
-		// count == 0 falls through; event still useful with issue_id + workspace_id.
-	}
 	var durationMS int64
 	if task.StartedAt.Valid && task.CompletedAt.Valid {
 		durationMS = task.CompletedAt.Time.Sub(task.StartedAt.Time).Milliseconds()
@@ -871,7 +866,6 @@ func (h *Handler) emitIssueExecutedOnFirstCompletion(r *http.Request, task *db.A
 		distinct,
 		uuidToString(marked.WorkspaceID),
 		uuidToString(marked.ID),
-		count,
 		durationMS,
 	))
 }

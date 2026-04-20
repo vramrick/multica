@@ -134,11 +134,3 @@ UPDATE issue
 SET first_executed_at = now()
 WHERE id = $1 AND first_executed_at IS NULL
 RETURNING id, workspace_id, creator_type, creator_id, first_executed_at;
-
--- name: CountExecutedIssuesInWorkspace :one
--- Number of issues in a workspace that have ever reached first execution.
--- Used to stamp nth_issue_for_workspace on the issue_executed event so
--- PostHog funnels can bucket ≥1 / ≥2 / ≥5 / ≥10 without re-counting.
-SELECT COUNT(*)::bigint AS count
-FROM issue
-WHERE workspace_id = $1 AND first_executed_at IS NOT NULL;

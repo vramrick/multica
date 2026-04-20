@@ -93,22 +93,6 @@ func (q *Queries) CountCreatedIssueAssignees(ctx context.Context, arg CountCreat
 	return items, nil
 }
 
-const countExecutedIssuesInWorkspace = `-- name: CountExecutedIssuesInWorkspace :one
-SELECT COUNT(*)::bigint AS count
-FROM issue
-WHERE workspace_id = $1 AND first_executed_at IS NOT NULL
-`
-
-// Number of issues in a workspace that have ever reached first execution.
-// Used to stamp nth_issue_for_workspace on the issue_executed event so
-// PostHog funnels can bucket ≥1 / ≥2 / ≥5 / ≥10 without re-counting.
-func (q *Queries) CountExecutedIssuesInWorkspace(ctx context.Context, workspaceID pgtype.UUID) (int64, error) {
-	row := q.db.QueryRow(ctx, countExecutedIssuesInWorkspace, workspaceID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
 const countIssues = `-- name: CountIssues :one
 SELECT count(*) FROM issue
 WHERE workspace_id = $1

@@ -86,15 +86,19 @@ func RuntimeRegistered(ownerID, workspaceID, runtimeID, provider, runtimeVersion
 // completion that flips `issues.first_executed_at` from NULL via an atomic
 // UPDATE. Retries, re-assignments, and comment-triggered follow-ups never
 // re-emit, which is what keeps the ≥1/≥2/≥5/≥10 funnel buckets honest.
-func IssueExecuted(actorID, workspaceID, issueID string, nthIssueForWorkspace int64, taskDurationMS int64) Event {
+//
+// Deliberately not stamped here: the workspace's Nth-issue ordinal.
+// Computing it at emit time is not atomic (two concurrent first-completions
+// both read count=1, both emit n=1), and PostHog derives the same number
+// exactly at query time from the event stream.
+func IssueExecuted(actorID, workspaceID, issueID string, taskDurationMS int64) Event {
 	return Event{
 		Name:        EventIssueExecuted,
 		DistinctID:  actorID,
 		WorkspaceID: workspaceID,
 		Properties: map[string]any{
-			"issue_id":                issueID,
-			"nth_issue_for_workspace": nthIssueForWorkspace,
-			"task_duration_ms":        taskDurationMS,
+			"issue_id":         issueID,
+			"task_duration_ms": taskDurationMS,
 		},
 	}
 }
