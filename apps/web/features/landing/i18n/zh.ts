@@ -296,6 +296,7 @@ export const zh: LandingDict = {
           "本地 Daemon 对 Agent 执行强制端到端工作区隔离（安全）",
           "Windows 下 Daemon 终端关闭后继续常驻，后台 Agent 不再被意外终止",
           "看板卡片重新显示描述预览——列表查询不再丢掉 description 字段",
+          "OpenClaw Agent 改为从 Agent 元数据读取真实模型，不再回退到默认值",
           "评论 Markdown 全链路保留——移除会误伤格式的 HTML sanitizer",
         ],
       },

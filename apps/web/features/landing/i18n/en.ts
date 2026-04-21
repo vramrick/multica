@@ -296,6 +296,7 @@ export const en: LandingDict = {
           "Workspace isolation enforced end-to-end for agent execution on the local daemon (security)",
           "Windows daemon stays alive after the terminal closes, so background agents keep running",
           "Board cards render their description preview again — list queries no longer strip the description field",
+          "OpenClaw agent runtime now reads the real model from agent metadata instead of falling back to a default",
           "Comment Markdown preserved end-to-end — the HTML sanitizer that was stripping formatting has been removed",
         ],
       },
