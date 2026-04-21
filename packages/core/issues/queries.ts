@@ -24,7 +24,10 @@ export const issueKeys = {
   usage: (issueId: string) => ["issues", "usage", issueId] as const,
 };
 
-export type MyIssuesFilter = Pick<ListIssuesParams, "assignee_id" | "assignee_ids" | "creator_id">;
+export type MyIssuesFilter = Pick<
+  ListIssuesParams,
+  "assignee_id" | "assignee_ids" | "creator_id" | "project_id"
+>;
 
 /** Page size per status column. */
 export const ISSUE_PAGE_SIZE = 50;

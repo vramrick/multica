@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Agent, AgentTask, Issue } from "@multica/core/types";
 
 const mockListAgentTasks = vi.hoisted(() => vi.fn());
-const mockListIssues = vi.hoisted(() => vi.fn());
+const mockGetIssue = vi.hoisted(() => vi.fn());
 
 vi.mock("@multica/core/hooks", () => ({
   useWorkspaceId: () => "ws-1",
@@ -25,7 +25,7 @@ vi.mock("@multica/core/paths", async () => {
 vi.mock("@multica/core/api", () => ({
   api: {
     listAgentTasks: (...args: unknown[]) => mockListAgentTasks(...args),
-    listIssues: (...args: unknown[]) => mockListIssues(...args),
+    getIssue: (...args: unknown[]) => mockGetIssue(...args),
   },
 }));
 
@@ -66,12 +66,10 @@ const agent: Agent = {
 
 function renderTasksTab(tasks: AgentTask[], issues: Issue[]) {
   mockListAgentTasks.mockResolvedValue(tasks);
-  mockListIssues.mockImplementation(
-    ({ status }: { status?: string }) => {
-      const matching = issues.filter((i) => i.status === status);
-      return Promise.resolve({ issues: matching, total: matching.length });
-    },
-  );
+  mockGetIssue.mockImplementation((id: string) => {
+    const found = issues.find((i) => i.id === id);
+    return found ? Promise.resolve(found) : Promise.reject(new Error("not found"));
+  });
 
   const queryClient = new QueryClient({
     defaultOptions: {

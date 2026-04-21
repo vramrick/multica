@@ -23,16 +23,13 @@ export function ListView({
   issues,
   visibleStatuses,
   childProgressMap = EMPTY_PROGRESS_MAP,
-  doneTotal: doneTotalOverride,
   myIssuesScope,
   myIssuesFilter,
 }: {
   issues: Issue[];
   visibleStatuses: IssueStatus[];
   childProgressMap?: Map<string, ChildProgress>;
-  /** Override the done-group count (e.g. with a server-filtered total). */
-  doneTotal?: number;
-  /** When set, load-more targets the per-scope My Issues cache instead of the workspace one. */
+  /** When set, per-status load-more targets the scoped cache instead of the workspace one. */
   myIssuesScope?: string;
   myIssuesFilter?: MyIssuesFilter;
 }) {
@@ -88,7 +85,6 @@ export function ListView({
             status={status}
             issues={issuesByStatus.get(status) ?? []}
             childProgressMap={childProgressMap}
-            totalOverride={status === "done" ? doneTotalOverride : undefined}
             myIssuesOpts={myIssuesOpts}
           />
         ))}
@@ -101,13 +97,11 @@ function StatusAccordionItem({
   status,
   issues,
   childProgressMap,
-  totalOverride,
   myIssuesOpts,
 }: {
   status: IssueStatus;
   issues: Issue[];
   childProgressMap: Map<string, ChildProgress>;
-  totalOverride?: number;
   myIssuesOpts?: { scope: string; filter: MyIssuesFilter };
 }) {
   const cfg = STATUS_CONFIG[status];
@@ -118,7 +112,6 @@ function StatusAccordionItem({
     status,
     myIssuesOpts,
   );
-  const displayCount = totalOverride ?? total;
 
   const issueIds = issues.map((i) => i.id);
   const selectedCount = issueIds.filter((id) => selectedIds.has(id)).length;
@@ -151,7 +144,7 @@ function StatusAccordionItem({
             <StatusIcon status={status} className="h-3 w-3" inheritColor />
             {cfg.label}
           </span>
-          <span className="text-xs text-muted-foreground">{displayCount}</span>
+          <span className="text-xs text-muted-foreground">{total}</span>
         </Accordion.Trigger>
         <div className="pr-2">
           <Tooltip>

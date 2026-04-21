@@ -99,17 +99,14 @@ const EMPTY_PROGRESS_MAP = new Map<string, ChildProgress>();
 
 export function BoardView({
   issues,
-  allIssues,
   visibleStatuses,
   hiddenStatuses,
   onMoveIssue,
   childProgressMap = EMPTY_PROGRESS_MAP,
-  doneTotal: doneTotalOverride,
   myIssuesScope,
   myIssuesFilter,
 }: {
   issues: Issue[];
-  allIssues: Issue[];
   visibleStatuses: IssueStatus[];
   hiddenStatuses: IssueStatus[];
   onMoveIssue: (
@@ -118,9 +115,7 @@ export function BoardView({
     newPosition?: number
   ) => void;
   childProgressMap?: Map<string, ChildProgress>;
-  /** Override the done-column count (e.g. with a server-filtered total). */
-  doneTotal?: number;
-  /** When set, use the My Issues load-more hook instead of the workspace one. */
+  /** When set, per-status load-more targets the scoped cache instead of the workspace one. */
   myIssuesScope?: string;
   myIssuesFilter?: MyIssuesFilter;
 }) {
@@ -292,7 +287,6 @@ export function BoardView({
             issueIds={columns[status] ?? []}
             issueMap={issueMapRef.current}
             childProgressMap={childProgressMap}
-            totalOverride={status === "done" ? doneTotalOverride : undefined}
             myIssuesOpts={myIssuesOpts}
           />
         ))}
@@ -300,7 +294,7 @@ export function BoardView({
         {hiddenStatuses.length > 0 && (
           <HiddenColumnsPanel
             hiddenStatuses={hiddenStatuses}
-            issues={allIssues}
+            myIssuesOpts={myIssuesOpts}
           />
         )}
       </div>
@@ -321,28 +315,25 @@ function PaginatedBoardColumn({
   issueIds,
   issueMap,
   childProgressMap,
-  totalOverride,
   myIssuesOpts,
 }: {
   status: IssueStatus;
   issueIds: string[];
   issueMap: Map<string, Issue>;
   childProgressMap?: Map<string, ChildProgress>;
-  totalOverride?: number;
   myIssuesOpts?: { scope: string; filter: MyIssuesFilter };
 }) {
   const { loadMore, hasMore, isLoading, total } = useLoadMoreByStatus(
     status,
     myIssuesOpts,
   );
-  const totalCount = totalOverride ?? total;
   return (
     <BoardColumn
       status={status}
       issueIds={issueIds}
       issueMap={issueMap}
       childProgressMap={childProgressMap}
-      totalCount={totalCount}
+      totalCount={total}
       footer={
         hasMore ? (
           <InfiniteScrollSentinel onVisible={loadMore} loading={isLoading} />
@@ -354,12 +345,11 @@ function PaginatedBoardColumn({
 
 function HiddenColumnsPanel({
   hiddenStatuses,
-  issues,
+  myIssuesOpts,
 }: {
   hiddenStatuses: IssueStatus[];
-  issues: Issue[];
+  myIssuesOpts?: { scope: string; filter: MyIssuesFilter };
 }) {
-  const viewStoreApi = useViewStoreApi();
   return (
     <div className="flex w-[240px] shrink-0 flex-col">
       <div className="mb-2 flex items-center gap-2 px-1">
@@ -368,47 +358,57 @@ function HiddenColumnsPanel({
         </span>
       </div>
       <div className="flex-1 space-y-0.5">
-        {hiddenStatuses.map((status) => {
-          const cfg = STATUS_CONFIG[status];
-          const count = issues.filter((i) => i.status === status).length;
-          return (
-            <div
-              key={status}
-              className="flex items-center justify-between rounded-lg px-2.5 py-2 hover:bg-muted/50"
+        {hiddenStatuses.map((status) => (
+          <HiddenColumnRow
+            key={status}
+            status={status}
+            myIssuesOpts={myIssuesOpts}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function HiddenColumnRow({
+  status,
+  myIssuesOpts,
+}: {
+  status: IssueStatus;
+  myIssuesOpts?: { scope: string; filter: MyIssuesFilter };
+}) {
+  const cfg = STATUS_CONFIG[status];
+  const viewStoreApi = useViewStoreApi();
+  const { total } = useLoadMoreByStatus(status, myIssuesOpts);
+  return (
+    <div className="flex items-center justify-between rounded-lg px-2.5 py-2 hover:bg-muted/50">
+      <div className="flex items-center gap-2">
+        <StatusIcon status={status} className="h-3.5 w-3.5" />
+        <span className="text-sm">{cfg.label}</span>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <span className="text-xs text-muted-foreground">{total}</span>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="rounded-full text-muted-foreground"
+              >
+                <MoreHorizontal className="size-3.5" />
+              </Button>
+            }
+          />
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              onClick={() => viewStoreApi.getState().showStatus(status)}
             >
-              <div className="flex items-center gap-2">
-                <StatusIcon status={status} className="h-3.5 w-3.5" />
-                <span className="text-sm">{cfg.label}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs text-muted-foreground">{count}</span>
-                <DropdownMenu>
-                  <DropdownMenuTrigger
-                    render={
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        className="rounded-full text-muted-foreground"
-                      >
-                        <MoreHorizontal className="size-3.5" />
-                      </Button>
-                    }
-                  />
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onClick={() =>
-                        viewStoreApi.getState().showStatus(status)
-                      }
-                    >
-                      <Eye className="size-3.5" />
-                      Show column
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </div>
-          );
-        })}
+              <Eye className="size-3.5" />
+              Show column
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );

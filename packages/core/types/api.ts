@@ -38,6 +38,7 @@ export interface ListIssuesParams {
   assignee_id?: string;
   assignee_ids?: string[];
   creator_id?: string;
+  project_id?: string;
   open_only?: boolean;
 }
 
