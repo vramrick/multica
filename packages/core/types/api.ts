@@ -41,11 +41,25 @@ export interface ListIssuesParams {
   open_only?: boolean;
 }
 
+/** Raw backend response shape for `GET /api/issues`. */
 export interface ListIssuesResponse {
   issues: Issue[];
   total: number;
-  /** True total of done issues in the workspace (for load-more pagination). Not returned by backend API — set by the frontend query function. */
-  doneTotal?: number;
+}
+
+/** Per-status bucket in the paginated issue cache. `total` is the server count (all pages), not the length of `issues`. */
+export interface IssueStatusBucket {
+  issues: Issue[];
+  total: number;
+}
+
+/**
+ * Frontend cache shape for the issue list. Data is bucketed by status so
+ * each column can paginate independently. Assembled from per-status
+ * `api.listIssues` responses by the query functions in `issues/queries.ts`.
+ */
+export interface ListIssuesCache {
+  byStatus: Partial<Record<IssueStatus, IssueStatusBucket>>;
 }
 
 export interface SearchIssueResult extends Issue {

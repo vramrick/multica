@@ -18,7 +18,7 @@ import { arrayMove } from "@dnd-kit/sortable";
 import { Eye, MoreHorizontal } from "lucide-react";
 import type { Issue, IssueStatus } from "@multica/core/types";
 import { Button } from "@multica/ui/components/ui/button";
-import { useLoadMoreDoneIssues } from "@multica/core/issues/mutations";
+import { useLoadMoreByStatus } from "@multica/core/issues/mutations";
 import type { MyIssuesFilter } from "@multica/core/issues/queries";
 import {
   DropdownMenu,
@@ -126,10 +126,9 @@ export function BoardView({
 }) {
   const sortBy = useViewStore((s) => s.sortBy);
   const sortDirection = useViewStore((s) => s.sortDirection);
-  const myIssuesOpts = myIssuesScope ? { scope: myIssuesScope, filter: myIssuesFilter ?? {} } : undefined;
-  const { loadMore, hasMore, isLoading: loadingMore, doneTotal: hookDoneTotal } =
-    useLoadMoreDoneIssues(myIssuesOpts);
-  const displayDoneTotal = doneTotalOverride ?? hookDoneTotal;
+  const myIssuesOpts = myIssuesScope
+    ? { scope: myIssuesScope, filter: myIssuesFilter ?? {} }
+    : undefined;
 
   // --- Drag state ---
   const [activeIssue, setActiveIssue] = useState<Issue | null>(null);
@@ -287,18 +286,14 @@ export function BoardView({
     >
       <div className="flex flex-1 min-h-0 gap-4 overflow-x-auto p-4">
         {visibleStatuses.map((status) => (
-          <BoardColumn
+          <PaginatedBoardColumn
             key={status}
             status={status}
             issueIds={columns[status] ?? []}
             issueMap={issueMapRef.current}
             childProgressMap={childProgressMap}
-            totalCount={status === "done" ? displayDoneTotal : undefined}
-            footer={
-              status === "done" && hasMore ? (
-                <InfiniteScrollSentinel onVisible={loadMore} loading={loadingMore} />
-              ) : undefined
-            }
+            totalOverride={status === "done" ? doneTotalOverride : undefined}
+            myIssuesOpts={myIssuesOpts}
           />
         ))}
 
@@ -318,6 +313,42 @@ export function BoardView({
         ) : null}
       </DragOverlay>
     </DndContext>
+  );
+}
+
+function PaginatedBoardColumn({
+  status,
+  issueIds,
+  issueMap,
+  childProgressMap,
+  totalOverride,
+  myIssuesOpts,
+}: {
+  status: IssueStatus;
+  issueIds: string[];
+  issueMap: Map<string, Issue>;
+  childProgressMap?: Map<string, ChildProgress>;
+  totalOverride?: number;
+  myIssuesOpts?: { scope: string; filter: MyIssuesFilter };
+}) {
+  const { loadMore, hasMore, isLoading, total } = useLoadMoreByStatus(
+    status,
+    myIssuesOpts,
+  );
+  const totalCount = totalOverride ?? total;
+  return (
+    <BoardColumn
+      status={status}
+      issueIds={issueIds}
+      issueMap={issueMap}
+      childProgressMap={childProgressMap}
+      totalCount={totalCount}
+      footer={
+        hasMore ? (
+          <InfiniteScrollSentinel onVisible={loadMore} loading={isLoading} />
+        ) : undefined
+      }
+    />
   );
 }
 

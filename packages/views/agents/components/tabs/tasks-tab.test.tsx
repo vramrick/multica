@@ -67,11 +67,10 @@ const agent: Agent = {
 function renderTasksTab(tasks: AgentTask[], issues: Issue[]) {
   mockListAgentTasks.mockResolvedValue(tasks);
   mockListIssues.mockImplementation(
-    ({ open_only, status }: { open_only?: boolean; status?: string }) =>
-      Promise.resolve({
-        issues: open_only ? issues : status === "done" ? [] : [],
-        total: open_only ? issues.length : 0,
-      }),
+    ({ status }: { status?: string }) => {
+      const matching = issues.filter((i) => i.status === status);
+      return Promise.resolve({ issues: matching, total: matching.length });
+    },
   );
 
   const queryClient = new QueryClient({
